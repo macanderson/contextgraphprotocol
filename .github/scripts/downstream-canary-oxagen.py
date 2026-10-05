@@ -65,7 +65,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-CGP_URL = "https://github.com/macanderson/context-graph-protocol"
+# This repository has lived under two owners: it moved from `macanderson` to
+# `oxageninc` on 2026-09-30. A manifest records whichever name was canonical
+# when the set was vendored, and both name this repository, so both are
+# accepted. Matching one alone is what broke this canary: oxagen's manifests
+# name `oxageninc`, the check named `macanderson`, and step 2 below then
+# reported that the canary would check nothing (#234).
+CGP_URLS = (
+    "https://github.com/oxageninc/context-graph-protocol",
+    "https://github.com/macanderson/context-graph-protocol",
+)
 
 # Upstream fixture directory -> (cargo package, test target, tests to skip).
 # Adding a vendored set upstream means adding its row here; step 2 above makes
@@ -113,7 +122,7 @@ def discover(oxagen_dir: Path) -> list[tuple[Path, dict]]:
         if not isinstance(manifest, dict):
             continue
         upstream = manifest.get("upstream_repository")
-        if isinstance(upstream, str) and normalize_url(upstream) == CGP_URL:
+        if isinstance(upstream, str) and normalize_url(upstream) in CGP_URLS:
             found.append((path, manifest))
     return found
 
@@ -147,7 +156,8 @@ def main() -> int:
     sets = discover(oxagen_dir)
     if not sets:
         print(
-            f"::error::no manifest.json under {oxagen_dir} names {CGP_URL} as its "
+            f"::error::no manifest.json under {oxagen_dir} names any of "
+            f"{', '.join(CGP_URLS)} as its "
             "upstream_repository — the sparse checkout or oxagen's layout moved, so "
             "this canary would check nothing"
         )
